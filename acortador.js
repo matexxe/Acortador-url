@@ -15,7 +15,7 @@ const cors = require("cors"); // Permitir peticiones desde otro origen (CORS)
 const rateLimit = require("express-rate-limit"); // Límite de solicitudes por IP
 
 const app = express();
-app.set('trust proxy', true);
+app.set('trust proxy', 1);
 
 // Configuración de entorno
 const PORT = process.env.PORT || 3000;
