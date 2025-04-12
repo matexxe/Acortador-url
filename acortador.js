@@ -136,7 +136,7 @@ app.get("/r/:code", async (req, res) => {
 async function start() {
   await initDB(); // Crea el archivo JSON si no existe
   app.listen(PORT, () => {
-    console.log(`Servidor escuchando en ${BASE_URL}`);
+    console.log(`Servidor escuchando el puerto ${PORT}`);
   });
 }
 
