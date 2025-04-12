@@ -1,5 +1,3 @@
-// Carga variables de entorno desde un archivo .env
-require("dotenv").config();
 
 const express = require("express");
 const {
