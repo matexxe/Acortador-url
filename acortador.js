@@ -110,17 +110,9 @@ app.get("/r/:code", async (req, res) => {
   try {
     const { code } = req.params;
     const originalUrl = await findCode(code); // Busca la URL original por el código
-
+    
     if (!originalUrl) {
-      // Si no existe, muestra error 404 en HTML
-      return res.status(404).send(`
-        <html>
-          <body>
-            <h1>404 - URL no encontrada</h1>
-            <p>El enlace acortado no existe o ha expirado</p>
-          </body>
-        </html>
-      `);
+      return res.status(404).send("URL no encontrada");
     }
 
     await registerClick(code); // Registra un clic más en la estadística
