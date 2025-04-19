@@ -1,4 +1,3 @@
-
 const express = require("express");
 const {
   initDB,
@@ -6,14 +5,14 @@ const {
   findCode,
   saveUrl,
   registerClick,
-} = require("./server/db"); // Funciones para manejo de URLs en archivo JSON
-const helmet = require("helmet"); // Seguridad HTTP
-const validator = require("validator"); // Validación de URLs
-const cors = require("cors"); // Permitir peticiones desde otro origen (CORS)
-const rateLimit = require("express-rate-limit"); // Límite de solicitudes por IP
+} = require("./server/db");
+const helmet = require("helmet");
+const validator = require("validator");
+const cors = require("cors");
+const rateLimit = require("express-rate-limit");
 
 const app = express();
-app.set('trust proxy', 1);
+app.set("trust proxy", 1);
 
 // Configuración de entorno
 const PORT = process.env.PORT || 3000;
@@ -22,24 +21,24 @@ const BASE_URL = process.env.BASE_URL;
 // Middlewares globales
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL, // Solo permite peticiones desde esta URL
+    origin: process.env.FRONTEND_URL,
     methods: ["GET", "POST"],
     credentials: true,
   })
 );
 
-app.use(helmet()); // Aplica medidas de seguridad en las cabeceras HTTP
-app.use(express.json({ limit: "10kb" })); // Limita el tamaño del body a 10kb para evitar abuso
+app.use(helmet());
+app.use(express.json({ limit: "10kb" }));
 
-// Límite de peticiones a la ruta de acortado (100 por 15 minutos)
+// Límite de peticiones para acortar URLs
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // Máximo 100 peticiones por IP
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: "Demasiadas solicitudes desde esta IP",
 });
-app.use("/api/shorten", limiter); // Se aplica solo a la ruta de acortar URLs
+app.use("/api/shorten", limiter);
 
-// Función para validar URLs correctamente formadas y con protocolo
+// Función para validar URLs
 function validateUrl(url) {
   if (
     !validator.isURL(url, {
@@ -51,7 +50,7 @@ function validateUrl(url) {
   }
 
   try {
-    return new URL(url).toString(); // Asegura que la URL sea válida y bien formada
+    return new URL(url).toString();
   } catch {
     throw new Error("URL mal formada");
   }
@@ -66,11 +65,10 @@ app.post("/api/shorten", async (req, res) => {
       return res.status(400).json({ error: "Se requiere una URL" });
     }
 
-    const validatedUrl = validateUrl(originalUrl); // Valida la URL
-    const existing = await findUrl(validatedUrl); // Revisa si ya existe en la base
+    const validatedUrl = validateUrl(originalUrl);
+    const existing = await findUrl(validatedUrl);
 
     if (existing) {
-      // Si ya fue acortada, la devuelve
       return res.json({
         originalUrl: existing.original,
         shortUrl: existing.short,
@@ -78,13 +76,12 @@ app.post("/api/shorten", async (req, res) => {
       });
     }
 
-    // Genera un código corto aleatorio de 6 caracteres
     let code;
     do {
-      code = Math.random().toString(36).substring(2, 8); // ej: "a1b2c3"
-    } while (await findCode(code)); // Reintenta si ya existe ese código
+      code = Math.random().toString(36).substring(2, 8);
+    } while (await findCode(code));
 
-    const shortUrl = `${BASE_URL}/r/${code}`; // Construye la URL corta
+    const shortUrl = `${BASE_URL}/r/${code}`;
     const urlData = {
       original: validatedUrl,
       short: shortUrl,
@@ -93,7 +90,7 @@ app.post("/api/shorten", async (req, res) => {
       clicks: 0,
     };
 
-    await saveUrl(urlData); // Guarda en la "base de datos" (archivo JSON)
+    await saveUrl(urlData);
 
     res.status(201).json({
       originalUrl: validatedUrl,
@@ -105,34 +102,41 @@ app.post("/api/shorten", async (req, res) => {
   }
 });
 
-// Endpoint para redirigir desde una URL corta a la original
+// Middleware para permitir redirección de imágenes desde otros orígenes
+app.use("/r/:code", (req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET");
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  next();
+});
+
+// Endpoint para redirigir desde una URL corta
 app.get("/r/:code", async (req, res) => {
   try {
     const { code } = req.params;
-    const originalUrl = await findCode(code); // Busca la URL original por el código
-    
+    const originalUrl = await findCode(code);
+
     if (!originalUrl) {
       return res.status(404).send("URL no encontrada");
     }
 
-    await registerClick(code); // Registra un clic más en la estadística
-    res.redirect(302, originalUrl); // Redirige al destino original
+    await registerClick(code);
+    res.redirect(302, originalUrl);
   } catch (err) {
     console.error("Error en redirección:", err);
     res.status(500).send("Error interno del servidor");
   }
 });
 
-// Inicia el servidor y prepara la "base de datos"
+// Iniciar servidor
 async function start() {
-  await initDB(); // Crea el archivo JSON si no existe
+  await initDB();
   app.listen(PORT, () => {
-    console.log(`Servidor escuchando el puerto ${PORT}`);
+    console.log(`Servidor escuchando en el puerto ${PORT}`);
   });
 }
 
-// Arranca el servidor
 start().catch((err) => {
   console.error("Error al iniciar:", err);
-  process.exit(1); // Finaliza si falla
+  process.exit(1);
 });
